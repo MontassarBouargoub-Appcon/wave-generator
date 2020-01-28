@@ -2,15 +2,16 @@
 
 FW for sin waveform generator based on STM32 MCU with DAC (PA4) output
 - samples = 100
+- DC level = 1650[mv]
 - Amp. max = 1650[mv]
 - Freq. = 500:1500[Hz]  
 
 Several AT commands has been implemented:  
 COM port baud rate 115200 (Virtual COM port from NUCLEO)
 
-- Set parameters  
+- Set parameters 
 
-CMD+SET=<Amp>&<Freq>+END     
+CMD+SET=< AMP >&< Freq >+END     
 
 Amp - Amplitude in [mv]  
 Freq - Frequency in [Hz]   
