@@ -13,8 +13,8 @@ typedef struct
 {
     uint32_t freq;
     uint32_t amp;
-    uint32_t Mkey;
-    uint32_t Cs;
+    uint32_t mkey;
+    uint32_t cs;
 } App_Settings_TypeDef;
 
 /* Private define ------------------------------------------------------------*/
@@ -23,6 +23,8 @@ typedef struct
 #define APP_SETTINGS_START_ADR          ADDR_FLASH_PAGE_63
 #define APP_SETTINGS_END_ADR            ADDR_FLASH_PAGE_64
 
+#define APP_SIN_SAMPLES                 100
+#define PI                              3.1415926
 /* Private macro -------------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
 static void _APP_InitModuls(void);
@@ -48,19 +50,17 @@ static struct
     App_Settings_TypeDef Settings;
     char *TxBuf;
     uint16_t TxBuf_Size;
-    char Args_Buf[3000];
+    char Args_Buf[2000];
 } hApp_Ins;
 
-
-#define SIN_SAMPLES 100
-#define PI 3.1415926
-uint32_t sin_val[SIN_SAMPLES];
+uint32_t sin_val[APP_SIN_SAMPLES];
 
 void get_sinval()
 {
-    for (int i = 0; i < SIN_SAMPLES; i++)
+    for (int i = 0; i < APP_SIN_SAMPLES; i++)
     {
-        sin_val[i] = ((sin(i * 2 * PI / SIN_SAMPLES) + 1) * (4096 / 2));
+//        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * (4096 / 2));
+        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * 2048 * (hApp_Ins.Settings.amp / 1650));
     }
 }
 /* ---------------------------------------------------------------------------*/
@@ -114,9 +114,11 @@ static void _APP_InitModuls(void)
     snprintf(hApp_Ins.TxBuf, hApp_Ins.TxBuf_Size, "Starting: %s\r\n", CONFIG_SW_VERSION);
     CMD_Data_Send(hApp_Ins.TxBuf, (uint16_t) strlen(hApp_Ins.TxBuf), eCMD_SEND_ONLY);
 
+    hApp_Ins.Settings.amp = 1650;
+    hApp_Ins.Settings.freq = 500;
     HAL_TIM_Base_Start(&htim2);
     get_sinval();
-    HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, sin_val, SIN_SAMPLES, DAC_ALIGN_12B_R);
+    HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, sin_val, APP_SIN_SAMPLES, DAC_ALIGN_12B_R);
 }
 
 /**
@@ -176,10 +178,22 @@ static CMD_Ret_Type _APP_Cmd_Exe_Set_Settings(char *pIn, char **ppOut)
 */
 static CMD_Ret_Type _APP_Cmd_Exe_Get_Settings(char *pIn, char **ppOut)
 {
+    uint32_t i;
+
     (void) pIn;
-    snprintf(hApp_Ins.Args_Buf, sizeof(hApp_Ins.Args_Buf) - 1, "\r\namp=%ld[mv]\r\nfreq=%ld[Hz]\r\n",
+    snprintf(hApp_Ins.Args_Buf, sizeof(hApp_Ins.Args_Buf) - 1,
+             "\r\namp=%ld[mv]\r\n"
+             "freq=%ld[Hz]\r\n"
+             "samples=%d\r\n"
+             "wave:\r\n",
              hApp_Ins.Settings.amp,
-             hApp_Ins.Settings.freq);
+             hApp_Ins.Settings.freq,
+             APP_SIN_SAMPLES);
+    for (i = 0; i < APP_SIN_SAMPLES; i++)
+    {
+        sprintf((hApp_Ins.Args_Buf + strlen(hApp_Ins.Args_Buf)), "%ld\r\n", sin_val[i]);
+    }
+
     *ppOut = hApp_Ins.Args_Buf;
     return eCMD_RET_OK;
 }
