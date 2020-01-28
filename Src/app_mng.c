@@ -30,6 +30,8 @@ typedef struct
 static void _APP_InitModuls(void);
 static void _APP_AddModulsTask(void);
 
+static void App_Calculate_Sin_Val(void);
+
 static CMD_Ret_Type _APP_Cmd_Exe_Set_Settings(char *pIn, char **ppOut);
 static CMD_Ret_Type _APP_Cmd_Exe_Get_Settings(char *pIn, char **ppOut);
 
@@ -55,14 +57,6 @@ static struct
 
 uint32_t sin_val[APP_SIN_SAMPLES];
 
-void App_Calculate_Sin_Val()
-{
-    for (int i = 0; i < APP_SIN_SAMPLES; i++)
-    {
-//        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * (4096 / 2));
-        sin_val[i] = (((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * 2048 * hApp_Ins.Settings.amp) / 1650);
-    }
-}
 /* ---------------------------------------------------------------------------*/
 #ifdef CONFIG_USE_IWDG
 extern IWDG_HandleTypeDef hiwdg;
@@ -145,6 +139,20 @@ void APP_Run(void *arg)
 }
 
 /**
+  * @brief  calculate sin values
+  * @param  void
+  * @retval void
+*/
+static void App_Calculate_Sin_Val(void)
+{
+    for (int i = 0; i < APP_SIN_SAMPLES; i++)
+    {
+//        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * (4096 / 2));
+        sin_val[i] = (((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * 2048 * hApp_Ins.Settings.amp) / 1650);
+    }
+}
+
+/**
 * @brief  Cmd function Exe, Insert fault insertion Settings
 * @param  none
 * @retval none
@@ -160,24 +168,26 @@ static CMD_Ret_Type _APP_Cmd_Exe_Set_Settings(char *pIn, char **ppOut)
     if ((pIn = strstr(pIn, "&")) != NULL)
     {
         tfreq = (uint32_t) atof(++pIn);
-
-        hApp_Ins.Settings.amp = tamp;
-        hApp_Ins.Settings.freq = tfreq;
-        App_Calculate_Sin_Val();
-        snprintf(hApp_Ins.Args_Buf, sizeof(hApp_Ins.Args_Buf) - 1,
-                 "\r\namp=%ld[mv]\r\n"
-                 "freq=%ld[Hz]\r\n"
-                 "samples=%d\r\n"
-                 "wave:\r\n",
-                 hApp_Ins.Settings.amp,
-                 hApp_Ins.Settings.freq,
-                 APP_SIN_SAMPLES);
-        for (i = 0; i < APP_SIN_SAMPLES; i++)
+        if (tamp <= 1650 && (tfreq >= 500 && tfreq <= 1500))
         {
-            sprintf((hApp_Ins.Args_Buf + strlen(hApp_Ins.Args_Buf)), "%ld\r\n", sin_val[i]);
+            hApp_Ins.Settings.amp = tamp;
+            hApp_Ins.Settings.freq = tfreq;
+            App_Calculate_Sin_Val();
+            snprintf(hApp_Ins.Args_Buf, sizeof(hApp_Ins.Args_Buf) - 1,
+                     "\r\namp=%ld[mv]\r\n"
+                     "freq=%ld[Hz]\r\n"
+                     "samples=%d\r\n"
+                     "wave:\r\n",
+                     hApp_Ins.Settings.amp,
+                     hApp_Ins.Settings.freq,
+                     APP_SIN_SAMPLES);
+            for (i = 0; i < APP_SIN_SAMPLES; i++)
+            {
+                sprintf((hApp_Ins.Args_Buf + strlen(hApp_Ins.Args_Buf)), "%ld\r\n", sin_val[i]);
+            }
+            *ppOut = hApp_Ins.Args_Buf;
+            return eCMD_RET_OK;
         }
-        *ppOut = hApp_Ins.Args_Buf;
-        return eCMD_RET_OK;
     }
     return eCMD_RET_FAIL;
 }
