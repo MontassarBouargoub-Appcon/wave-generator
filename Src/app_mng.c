@@ -110,7 +110,7 @@ static void _APP_InitModuls(void)
 
     hApp_Ins.Settings.amp = 1650;
     hApp_Ins.Settings.freq = 500;
-    HAL_TIM_Base_Start(&htim2);
+
     App_Calculate_Sin_Val();
     HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, sin_val, APP_SIN_SAMPLES, DAC_ALIGN_12B_R);
 }
@@ -150,6 +150,10 @@ static void App_Calculate_Sin_Val(void)
 //        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * (4096 / 2));
         sin_val[i] = (((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * 2048 * hApp_Ins.Settings.amp) / 1650);
     }
+    HAL_TIM_Base_DeInit(&htim2);
+    htim2.Init.Period = 100000 / hApp_Ins.Settings.freq;
+    HAL_TIM_Base_Init(&htim2);
+    HAL_TIM_Base_Start(&htim2);
 }
 
 /**
