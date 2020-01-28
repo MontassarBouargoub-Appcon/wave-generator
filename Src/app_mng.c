@@ -55,12 +55,12 @@ static struct
 
 uint32_t sin_val[APP_SIN_SAMPLES];
 
-void get_sinval()
+void App_Calculate_Sin_Val()
 {
     for (int i = 0; i < APP_SIN_SAMPLES; i++)
     {
 //        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * (4096 / 2));
-        sin_val[i] = ((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * 2048 * (hApp_Ins.Settings.amp / 1650));
+        sin_val[i] = (((sin(i * 2 * PI / APP_SIN_SAMPLES) + 1) * 2048 * hApp_Ins.Settings.amp) / 1650);
     }
 }
 /* ---------------------------------------------------------------------------*/
@@ -117,7 +117,7 @@ static void _APP_InitModuls(void)
     hApp_Ins.Settings.amp = 1650;
     hApp_Ins.Settings.freq = 500;
     HAL_TIM_Base_Start(&htim2);
-    get_sinval();
+    App_Calculate_Sin_Val();
     HAL_DAC_Start_DMA(&hdac, DAC_CHANNEL_1, sin_val, APP_SIN_SAMPLES, DAC_ALIGN_12B_R);
 }
 
@@ -153,6 +153,7 @@ static CMD_Ret_Type _APP_Cmd_Exe_Set_Settings(char *pIn, char **ppOut)
 {
     uint32_t tamp;
     uint32_t tfreq;
+    uint32_t i;
 
     // <temp>&<hum>&<co2>&<mode>
     tamp = (uint32_t) atof(pIn);
@@ -162,9 +163,19 @@ static CMD_Ret_Type _APP_Cmd_Exe_Set_Settings(char *pIn, char **ppOut)
 
         hApp_Ins.Settings.amp = tamp;
         hApp_Ins.Settings.freq = tfreq;
-        snprintf(hApp_Ins.Args_Buf, sizeof(hApp_Ins.Args_Buf) - 1, "\r\namp=%ld[mv]\r\nfreq=%ld[Hz]\r\n",
+        App_Calculate_Sin_Val();
+        snprintf(hApp_Ins.Args_Buf, sizeof(hApp_Ins.Args_Buf) - 1,
+                 "\r\namp=%ld[mv]\r\n"
+                 "freq=%ld[Hz]\r\n"
+                 "samples=%d\r\n"
+                 "wave:\r\n",
                  hApp_Ins.Settings.amp,
-                 hApp_Ins.Settings.freq);
+                 hApp_Ins.Settings.freq,
+                 APP_SIN_SAMPLES);
+        for (i = 0; i < APP_SIN_SAMPLES; i++)
+        {
+            sprintf((hApp_Ins.Args_Buf + strlen(hApp_Ins.Args_Buf)), "%ld\r\n", sin_val[i]);
+        }
         *ppOut = hApp_Ins.Args_Buf;
         return eCMD_RET_OK;
     }
